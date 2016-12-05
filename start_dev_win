@@ -1,0 +1,15 @@
+#!/bin/bash
+tmux has-session -t escriptboilerplate
+if [ $? != 0 ]
+then
+  tmux new-session -s escriptboilerplate -n editor -d
+  tmux send-keys -t escriptboilerplate 'cd ~/Projects/WiP' C-m
+  tmux send-keys -t escriptboilerplate 'vim -S Session.win.vim' C-m
+  tmux split-window -v -t escriptboilerplate
+  tmux select-layout -t escriptboilerplate main-horizontal
+  tmux send-keys -t escriptboilerplate:1.2 'cd ~/Projects/WiP' C-m
+  tmux new-window -n console -t escriptboilerplate
+  tmux send-keys -t escriptboilerplate:2 'cd ~/Projects/WiP' C-m
+  tmux select-window -t escriptboilerplate:1
+fi
+tmux attach -t escriptboilerplate
