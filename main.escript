@@ -69,6 +69,7 @@ setup_magic_and_environment() ->
 
 - spec ebp_log( Log_Level :: atom(), Log_Message :: string() ) -> ok.
 ebp_log( Log_Level, Log_Message ) ->
+	% TODO: if no color, make color_reset ""
 	Color =
 	case get( "NO_COLOR" ) of
 		true -> "";
@@ -138,6 +139,28 @@ help( Help_Message ) ->
 % Parse command line options
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+-define( USAGE,
+	 {
+	  { "-f", "--file", true, "Filename to process" }
+	 } ).
+
+parse_args( [ ] ) ->
+	ok;
+parse_args( [ "--" ++ Arg | T ] ) ->
+	Name = string:sub_word( Arg, 1, $= ),
+	Option = string:sub_word( Arg, 2, $= ),
+	io:format( "got long arg: ~p~n", [ Name ] ),
+	io:format( "got long arg option: ~p~n", [ Option ] ),
+	parse_args( T );
+parse_args( [ "-" ++ Arg | T ] ) ->
+	io:format( "got short arg: ~p~n", [ Arg ] ),
+	[ Option | Rest ] = T,
+	io:format( "got short arg option: ~p~n", [ Option ] ),
+	parse_args( Rest );
+parse_args( [ H | T ] ) ->
+	io:format( "got arg: ~p~n", [ H ] ),
+	parse_args( T ).
+
 main(["test"]) -> 
 	P = erlang:open_port({spawn, "bash -c test -t 1"}, [ exit_status ] ),
 	receive 
@@ -149,7 +172,9 @@ main(["test"]) ->
 	io:format( "base: ~p~n", [ get("__base") ] ),
 	io:format( "log level: ~p~n", [ get("LOG_LEVEL") ] ),
 	io:format( "color?: ~p~n", [ get("NO_COLOR") ] ),
-	io:format( "term: ~p~n~n", [ os:getenv("TERM") ] ),
+	io:format( "term: ~p~n", [ os:getenv("TERM") ] ),
+	{ { USAGE0, _, _, _ } } = ?USAGE,
+	io:format( "usage0: ~p~n", [ USAGE0 ] ),
 	ebp_alert( "alert" ),
 	ebp_critical( "critical" ),
 	ebp_error( "error" ),
@@ -161,13 +186,18 @@ main(["test"]) ->
 	help( "help test" ),
 	ebp_emergency( "emergency" ),
 	ok;
-main(_) ->
 
-	io:format("~p~n", [ init:get_arguments() ] ),
+main( Args ) ->
+	setup_magic_and_environment(),
+	parse_args( Args ),
+
+	
+	
+%	io:format("~p~n", [ init:get_arguments() ] ),
+	io:format("~p~n", [ init:get_plain_arguments() ] ),
 	io:format("~p~n", [ ?__BOILERPLATE_VERSION__ ] ),
 io:format("~p~n", [ ?LINE ] ),
-io:format("~p~n", [ ?MACHINE ] ),
-
+io:format("~p~n", [ ?MACHINE ] ), 
 %io:format("~p~n", [ ?FUNCTION_NAME ] ),
 %io:format("~p~n", [ ?FUNCTION_ARITY ] ),
 
