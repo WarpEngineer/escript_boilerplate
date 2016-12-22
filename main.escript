@@ -164,14 +164,26 @@ ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
   -V --version     Show version and exit
 " ).
 
--spec parse_usage_string( list(), list( tuple() ) ) -> list( tuple() ).
-parse_usage_string( [ ], Acc ) ->
-	io:format( "Got-> done!~n", [  ] ),
+%%	  { short, long,         arg,   description,                                           required, default }
+-spec parse_usage_string( list() ) -> list( tuple() ).
+parse_usage_string( [ ] ) ->
+	io:format( "Got-> empty!~n", [  ] ),
+	{};
+parse_usage_string( [ "-" ++ S, "--" ++ L, "[arg]"  | T ] ) ->
+	{ S, L, true, T, undefined, undefined }; % TODO: fix last two
+parse_usage_string( [ "-" ++ S, "--" ++ L | T ] ) ->
+	{ S, L, false, T, undefined, undefined }; % TODO: fix last two
+parse_usage_string( [ "-" ++ S | T ] ) ->
+	{ S, undefined, false, T, undefined, undefined }; % TODO: fix last two
+parse_usage_string( S ) ->
+	{}.
+
+-spec parse_usage_strings( list(), list( tuple() ) ) -> list( tuple() ).
+parse_usage_strings( [  ], Acc ) ->
 	Acc;
-parse_usage_string( [ H | T ], Acc ) ->
-	% TODO: check for empty string
-	io:format( "Got-> ~s~n", [ H ] ),
-	parse_usage_string( T, Acc ).
+parse_usage_strings( [ H | T ], Acc ) ->
+	Parsed = parse_usage_string( string:tokens( H, " ") ),
+	parse_usage_strings( T, [ Parsed | Acc ] ).
 
 -spec parse_usage( ) -> ok.
 parse_usage( ) ->
@@ -182,7 +194,7 @@ parse_usage( ) ->
 				undefined ->
 					ebp_emergency( "One of USAGE_STR or USAGE_LIST is required to proceed" );
 				_Usage_str ->
-					put( "__usage", parse_usage_string( string:tokens( ?USAGE_STR, "\n" ), [ ] ) )
+					put( "__usage", parse_usage_strings( string:tokens( ?USAGE_STR, "\n" ), [ ] ) )
 			end;
 		_Usage ->
 			put( "__usage", ?USAGE_LIST )
