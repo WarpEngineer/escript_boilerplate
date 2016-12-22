@@ -4,6 +4,11 @@ let s:cpo_save=&cpo
 set cpo&vim
 inoremap <silent> <F4> :close
 map! <D-v> *
+nnoremap <silent>  :TmuxNavigateLeft
+nnoremap <silent> <NL> :TmuxNavigateDown
+nnoremap <silent>  :TmuxNavigateUp
+nnoremap <silent>  :TmuxNavigateRight
+nnoremap <silent>  :TmuxNavigatePrevious
 nmap  :call ToggleComment()
 vmap  :call ToggleComment()
 nmap H3 :s/\(.*\)/-\1-/o
@@ -12,6 +17,14 @@ nmap H1 yypVr=o
 map Q gq
 nmap [C 9999[c
 nmap [c <Plug>(signify-prev-hunk)
+nmap <silent> \w\y <Plug>VimwikiMakeYesterdayDiaryNote
+nmap <silent> \w\t <Plug>VimwikiTabMakeDiaryNote
+nmap <silent> \w\w <Plug>VimwikiMakeDiaryNote
+nmap <silent> \w\i <Plug>VimwikiDiaryGenerateLinks
+nmap <silent> \wi <Plug>VimwikiDiaryIndex
+nmap <silent> \ws <Plug>VimwikiUISelect
+nmap <silent> \wt <Plug>VimwikiTabIndex
+nmap <silent> \ww <Plug>VimwikiIndex
 nmap ]C 9999]c
 nmap ]c <Plug>(signify-next-hunk)
 vmap gx <Plug>NetrwBrowseXVis
@@ -47,6 +60,7 @@ set runtimepath=~/.vim,~/.vim/bundle/jedi-vim,~/.vim/bundle/nerdtree,~/.vim/bund
 set showcmd
 set statusline=%f%m%r%h%w\ %y\ %l,%v\ %p%%\ %L
 set tabline=%!ShortTabLine()
+set window=28
 let s:so_save = &so | let s:siso_save = &siso | set so=0 siso=0
 let v:this_session=expand("<sfile>:p")
 silent only
@@ -70,8 +84,8 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winheight=1 winwidth=1
-exe 'vert 1resize ' . ((&columns * 98 + 98) / 197)
-exe 'vert 2resize ' . ((&columns * 98 + 98) / 197)
+exe 'vert 1resize ' . ((&columns * 92 + 118) / 236)
+exe 'vert 2resize ' . ((&columns * 143 + 118) / 236)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -181,12 +195,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 77 - ((18 * winheight(0) + 14) / 28)
+let s:l = 263 - ((26 * winheight(0) + 13) / 27)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-77
-normal! 019|
+263
+normal! 042|
 wincmd w
 argglobal
 edit main.escript
@@ -298,16 +312,16 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 79 - ((27 * winheight(0) + 14) / 28)
+let s:l = 172 - ((6 * winheight(0) + 13) / 27)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-79
-normal! 0
+172
+normal! 038|
 wincmd w
 2wincmd w
-exe 'vert 1resize ' . ((&columns * 98 + 98) / 197)
-exe 'vert 2resize ' . ((&columns * 98 + 98) / 197)
+exe 'vert 1resize ' . ((&columns * 92 + 118) / 236)
+exe 'vert 2resize ' . ((&columns * 143 + 118) / 236)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
