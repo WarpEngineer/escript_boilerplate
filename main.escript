@@ -177,6 +177,18 @@ get_arg_description( L ) ->
 			      (_) -> true end, L ), " "
 	 ).	  
 
+-spec get_arg_default( list() ) -> string().
+get_arg_default( L ) ->
+	case lists:filter( fun("Default=" ++ _) -> true;
+			      ("default=" ++ _) -> true;
+			      ( _ ) -> false end, L
+			 ) of
+		[] -> 
+			undefined;
+		[ Default ] -> 
+			string:sub_word( Default, 2, $= )
+	end.
+
 -spec is_arg_required( list() ) -> true | false.
 is_arg_required( L ) ->
 	lists:member("required", lists:map(fun(X) -> string:strip(string:to_lower(X), right, $.) end, L)).
@@ -186,11 +198,11 @@ is_arg_required( L ) ->
 parse_usage_string( [ ] ) ->
 	{};
 parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L, "[arg]"  | T ] ) ->
-	{ Short, Long, true, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+	{ Short, Long, true, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
 parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L | T ] ) ->
-	{ Short, Long, false, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+	{ Short, Long, false, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
 parse_usage_string( [ Short = "-" ++ _S | T ] ) ->
-	{ Short, undefined, false, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+	{ Short, undefined, false, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
 parse_usage_string( _T ) ->
 	{}.
 
