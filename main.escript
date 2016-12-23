@@ -64,8 +64,9 @@ setup_magic_and_environment() ->
 			end
 	end.
 
-% Functions
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Logging functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec ebp_log( Log_Level :: atom(), Log_Message :: string() ) -> ok.
 ebp_log( Log_Level, Log_Message ) ->
@@ -130,18 +131,18 @@ ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
 %%%      -define( USAGE_LIST, undefined ).
 %%%     TODO: put this back when done testing.
 -define( USAGE_LIST, undefined ).
-%-define( USAGE_LIST,
-%	 [
-%%	  { short, long,         arg,   description,                                           required, default }
-%	  { "-f",  "--file",     true,  "Filename to process",                                 true,     undefined },
-%	  { "-t",  "--temp",     true,  "Location of tempfile",                                false,    "/tmp/bar" },
-%	  { "-v",  undefined,    false, "Enable verbose mode, print script as it is executed", false,    undefined },
-%	  { "-d",  "--debug",    false, "Enables debug mode",                                  false,    undefined },
-%	  { "-h",  "--help",     false, "This page",                                           false,    undefined },
-%	  { "-n",  "--no-color", false, "Disable color output",                                false,    undefined },
-%	  { "-1",  "--one",      false, "Do just one thing",                                   false,    undefined },
-%	  { "-V",  "--version",  false, "Show version and exit",                               false,    undefined }
-%	 ] ).
+-define( AUSAGE_LIST,
+	 [
+%	  { short, long,         arg,   description,                                           required, default }
+	  { "-f",  "--file",     true,  "Filename to process",                                 true,     undefined },
+	  { "-t",  "--temp",     true,  "Location of tempfile",                                false,    "/tmp/bar" },
+	  { "-v",  undefined,    false, "Enable verbose mode, print script as it is executed", false,    undefined },
+	  { "-d",  "--debug",    false, "Enables debug mode",                                  false,    undefined },
+	  { "-h",  "--help",     false, "This page",                                           false,    undefined },
+	  { "-n",  "--no-color", false, "Disable color output",                                false,    undefined },
+	  { "-1",  "--one",      false, "Do just one thing",                                   false,    undefined },
+	  { "-V",  "--version",  false, "Show version and exit",                               false,    undefined }
+	 ] ).
 
 %%%  Define this usage string in order to provide available command line arguments.
 %%%  The string will be parsed into a list like the one defined above.  The parsing
@@ -164,26 +165,43 @@ ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
   -V --version     Show version and exit
 " ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Usage string parsing functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+-spec get_arg_description( list() ) -> string().
+get_arg_description( L ) ->
+	string:join(
+	  lists:takewhile( fun("Required" ++ _) -> false;
+			      ("Default" ++ _) -> false;
+			      (_) -> true end, L ), " "
+	 ).	  
+
+-spec is_arg_required( list() ) -> true | false.
+is_arg_required( L ) ->
+	lists:member("required", lists:map(fun(X) -> string:strip(string:to_lower(X), right, $.) end, L)).
+
 %%	  { short, long,         arg,   description,                                           required, default }
 -spec parse_usage_string( list() ) -> list( tuple() ).
 parse_usage_string( [ ] ) ->
-	io:format( "Got-> empty!~n", [  ] ),
 	{};
-parse_usage_string( [ "-" ++ S, "--" ++ L, "[arg]"  | T ] ) ->
-	{ S, L, true, T, undefined, undefined }; % TODO: fix last two
-parse_usage_string( [ "-" ++ S, "--" ++ L | T ] ) ->
-	{ S, L, false, T, undefined, undefined }; % TODO: fix last two
-parse_usage_string( [ "-" ++ S | T ] ) ->
-	{ S, undefined, false, T, undefined, undefined }; % TODO: fix last two
-parse_usage_string( S ) ->
+parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L, "[arg]"  | T ] ) ->
+	{ Short, Long, true, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L | T ] ) ->
+	{ Short, Long, false, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+parse_usage_string( [ Short = "-" ++ _S | T ] ) ->
+	{ Short, undefined, false, get_arg_description( T ), is_arg_required( T ), undefined }; % TODO: fix default
+parse_usage_string( _T ) ->
 	{}.
 
 -spec parse_usage_strings( list(), list( tuple() ) ) -> list( tuple() ).
 parse_usage_strings( [  ], Acc ) ->
 	Acc;
 parse_usage_strings( [ H | T ], Acc ) ->
-	Parsed = parse_usage_string( string:tokens( H, " ") ),
-	parse_usage_strings( T, [ Parsed | Acc ] ).
+	case parse_usage_string( string:tokens( H, " ") ) of
+		{} -> parse_usage_strings( T, Acc );
+		Parsed -> parse_usage_strings( T, [ Parsed | Acc ] )
+	end.
 
 -spec parse_usage( ) -> ok.
 parse_usage( ) ->
@@ -199,6 +217,8 @@ parse_usage( ) ->
 		_Usage ->
 			put( "__usage", ?USAGE_LIST )
 	end.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec help( ) -> ok.
 help( ) ->
@@ -220,8 +240,9 @@ usage() ->
 		Usage -> io:format( standard_error, "~p~n~n", [ Usage ] )
 	end.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse command line options
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 parse_args( [ ] ) ->
 	ok;
@@ -253,8 +274,6 @@ main(["test"]) ->
 	io:format( "log level: ~p~n", [ get("LOG_LEVEL") ] ),
 	io:format( "color?: ~p~n", [ get("NO_COLOR") ] ),
 	io:format( "term: ~p~n", [ os:getenv("TERM") ] ),
-	{ { USAGE0, _, _, _ } } = ?USAGE_LIST,
-	io:format( "usage0: ~p~n", [ USAGE0 ] ),
 	ebp_alert( "alert" ),
 	ebp_critical( "critical" ),
 	ebp_error( "error" ),
