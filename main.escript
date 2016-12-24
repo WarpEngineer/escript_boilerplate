@@ -253,6 +253,7 @@ usage() ->
 % Parse command line options
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+-spec get_arg_info( string() ) -> tuple().
 get_arg_info( Long = "--" ++ _Arg ) ->
 	% look for an equal sign
 	Name = string:sub_word( Long, 1, $= ),
@@ -269,7 +270,7 @@ get_arg_info( Short = "-" ++ _Arg ) ->
 get_arg_info( Arg ) ->
 	help( io_lib:format( "Unknown argument: ~s", [ Arg ] ) ).
 
-%TODO: make sure required args are passed in. Ex. --file
+-spec parse_args( list() ) -> ok.
 parse_args( [ ] ) ->
 	ok;
 parse_args( [ Arg = "-" ++ _R | T ] ) ->
@@ -311,7 +312,22 @@ parse_args( [ H | T ] ) ->
 	end,
 	parse_args( T ).
 
-main(["test"]) -> 
+-spec validate_required_args( list() ) -> ok.
+validate_required_args( [  ] ) ->
+	ok;
+validate_required_args( [ { Short, Long, _, _, true, _ } | T ] ) ->
+	case get( Short ) of
+		undefined ->
+			help( io_lib:format( "~s (~s) is required", [ Short, Long ] ) );
+		_ ->
+			ok
+	end,
+	validate_required_args( T );
+validate_required_args( [ _ | T ] ) ->
+	validate_required_args( T ).
+
+info() -> 
+	% TODO: make this look like bash one
 	P = erlang:open_port({spawn, "bash -c test -t 1"}, [ exit_status ] ),
 	receive 
 		{ P, { exit_status, Data } } -> io:format("Data ~p~n", [ Data ] )
@@ -334,14 +350,63 @@ main(["test"]) ->
 	ebp_output( "output" ),
 	help( "help test" ),
 	ebp_emergency( "emergency" ),
-	ok;
+	ok.
 
 main( Args ) ->
 	setup_magic_and_environment(),
 	parse_usage(),
+	
 	parse_args( Args ),
-	io:format("Dict: ~p~n", [ erlang:get() ] ).
-	%usage().
+
+	% process command line switches
+	case get( "-V" ) of
+		true ->
+			% version print mode
+			io:format( standard_error, "Version: ~s~n", [ ?__version ] ),
+			erlang:halt(1);
+		_ ->
+			ok
+	end,
+	case get( "-h" ) of
+		true ->
+			% help mode
+			help( io_lib:format( "Help using ~s", [ get( "__file" ) ] ) );
+		_ ->
+			ok
+	end,
+
+	% validate required args are there
+	validate_required_args( get( "__usage" ) ),
+	
+	% process more command line switches
+	case get( "-d" ) of
+		true ->
+			% debug mode
+			put( "LOG_LEVEL", "7" );
+		_ ->
+			ok
+	end,
+	case get( "-v" ) of
+		true ->
+			% verbose mode
+			put( "VERBOSE", true );
+		_ ->
+			ok
+	end,
+	case get( "-n" ) of
+		true ->
+			% no color mode
+			put( "NO_COLOR", true );
+		_ ->
+			ok
+	end,
+
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%% Runtime
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	info().
 	
 	
 %	io:format("~p~n", [ init:get_arguments() ] ),
