@@ -129,9 +129,8 @@ ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
 %%%  Only define one or the other. If this one is defined, USAGE_STR will be ignored.
 %%%  Undefine by setting to 'undefined' as follows:
 %%%      -define( USAGE_LIST, undefined ).
-%%%     TODO: put this back when done testing.
--define( USAGE_LIST, undefined ).
--define( AUSAGE_LIST,
+%-define( USAGE_LIST, undefined ).
+-define( USAGE_LIST,
 	 [
 %	  { short, long,         arg,   description,                                           required, default }
 	  { "-f",  "--file",     true,  "Filename to process",                                 true,     undefined },
@@ -153,17 +152,17 @@ ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
 %%%  Only define one or the other. If USAGE_LIST is defined, this one will be ignored.
 %%%  Undefine by setting to 'undefined' as follows:
 %%%      -define( USAGE_STR, undefined ).
-%-define( USAGE_STR, undefined ).
--define( USAGE_STR, "
-  -f --file  [arg] Filename to process. Required.
-  -t --temp  [arg] Location of tempfile. Default=\"/tmp/bar\"
-  -v               Enable verbose mode, print script as it is executed
-  -d --debug       Enables debug mode
-  -h --help        This page
-  -n --no-color    Disable color output
-  -1 --one         Do just one thing
-  -V --version     Show version and exit
-" ).
+-define( USAGE_STR, undefined ).
+%-define( USAGE_STR, "
+%  -f --file  [arg] Filename to process. Required.
+%  -t --temp  [arg] Location of tempfile. Default=/tmp/bar
+%  -v               Enable verbose mode, print script as it is executed
+%  -d --debug       Enables debug mode
+%  -h --help        This page
+%  -n --no-color    Disable color output
+%  -1 --one         Do just one thing
+%  -V --version     Show version and exit
+%" ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Usage string parsing functions
@@ -232,12 +231,9 @@ parse_usage( ) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec help( ) -> ok.
-help( ) ->
-	help( "" ).
 -spec help( Help_Message :: string() ) -> ok.
 help( Help_Message ) ->
-	io:format( standard_error, "~n~s~n~n", [ Help_Message ] ),
+	io:format( standard_error, "~n  ~s~n~n", [ Help_Message ] ),
 	usage(),
 	case get( "__helptext" ) of
 		undefined -> ok;
@@ -250,27 +246,69 @@ usage() ->
 	case get( "__usage" ) of
 		undefined -> io:format( standard_error, "No usage available~n~n", [ ] );
 		Usage -> io:format( standard_error, "~p~n~n", [ Usage ] )
+			 % TODO: format Usage correctly 
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parse command line options
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+get_arg_info( Long = "--" ++ _Arg ) ->
+	% look for an equal sign
+	Name = string:sub_word( Long, 1, $= ),
+	OptArg = string:sub_word( Long, 2, $= ),
+	case lists:keyfind( Name, 2, get("__usage") ) of
+		false -> help( io_lib:format( "Unknown argument: ~s", [ Long ] ) );
+		Info -> erlang:append_element( Info, OptArg ) % append what's after the = sign, which could be empty.
+	end;
+get_arg_info( Short = "-" ++ _Arg ) ->
+	case lists:keyfind( Short, 1, get("__usage") ) of
+		false -> help( io_lib:format( "Unknown argument: ~s", [ Short ] ) );
+		Info -> erlang:append_element( Info, [ ] ) % no = sign so just append an empty list.
+	end;
+get_arg_info( Arg ) ->
+	help( io_lib:format( "Unknown argument: ~s", [ Arg ] ) ).
+
+%TODO: make sure required args are passed in. Ex. --file
 parse_args( [ ] ) ->
 	ok;
-parse_args( [ "--" ++ Arg | T ] ) ->
-	Name = string:sub_word( Arg, 1, $= ),
-	Option = string:sub_word( Arg, 2, $= ),
-	io:format( "got long arg: ~p~n", [ Name ] ),
-	io:format( "got long arg option: ~p~n", [ Option ] ),
-	parse_args( T );
-parse_args( [ "-" ++ Arg | T ] ) ->
-	io:format( "got short arg: ~p~n", [ Arg ] ),
-	[ Option | Rest ] = T,
-	io:format( "got short arg option: ~p~n", [ Option ] ),
-	parse_args( Rest );
+parse_args( [ Arg = "-" ++ _R | T ] ) ->
+	case get_arg_info( Arg ) of
+		{ Short, Clean_Long, true, _, _, undefined, [ ] } ->
+			% this option requires an argument but one was not supplied  with an = sign, and no default is available
+			% take whatever is next in the list if there is something there
+			case T of
+				[ ] ->
+					help( io_lib:format( "~s (~s) requires and argument", [ Short, Clean_Long ] ) );
+				[ OptArg | Rest ] ->
+					put( Short, OptArg ),
+					parse_args( Rest )
+			end;
+		{ Short, _, true, _, _, Default, [ ] } ->
+			% this option requires an argument and one was not supplied with an = sign, but a default is available
+			% look at what's next in the list and if there's nothing there, use the default.
+			case T of
+				[ ] ->
+					put( Short, Default ),
+					parse_args( T );
+				[ OptArg | Rest ] ->
+					put( Short, OptArg ),
+					parse_args( Rest )
+			end;
+		{ Short, _, true, _, _, _, Passed_Opt } -> 
+			% this option requires an argument and one was supplied with an = sign.
+			put( Short, Passed_Opt ),
+			parse_args( T );
+		{ Short, _, false, _, _, _, _ } -> 
+			% this option does not require an argument, so just set it to true
+			put( Short, true ),
+			parse_args( T )
+	end;
 parse_args( [ H | T ] ) ->
-	io:format( "got arg: ~p~n", [ H ] ),
+	case get( "__args" ) of
+		undefined -> put( "__args", [ H ] );
+		Args -> put( "__args", [ H | Args ] )
+	end,
 	parse_args( T ).
 
 main(["test"]) -> 
@@ -302,18 +340,18 @@ main( Args ) ->
 	setup_magic_and_environment(),
 	parse_usage(),
 	parse_args( Args ),
-
+	io:format("Dict: ~p~n", [ erlang:get() ] ).
+	%usage().
 	
 	
 %	io:format("~p~n", [ init:get_arguments() ] ),
 %	io:format("~p~n", [ init:get_plain_arguments() ] ),
-	io:format("~p~n", [ ?__BOILERPLATE_VERSION__ ] ),
-	io:format("~p~n", [ ?LINE ] ),
-	io:format("~p~n", [ ?MACHINE ] ), 
+%	io:format("~p~n", [ ?__BOILERPLATE_VERSION__ ] ),
+%	io:format("~p~n", [ ?LINE ] ),
+%	io:format("~p~n", [ ?MACHINE ] ), 
 %	io:format("~p~n", [ ?FUNCTION_NAME ] ),
 %	io:format("~p~n", [ ?FUNCTION_ARITY ] ),
 %	io:format("~p~n", [ string:tokens( ?USAGE_STR, "\n" ) ] ),
-	usage().
 
 
 
