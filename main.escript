@@ -91,6 +91,9 @@ setup_magic_and_environment() ->
 	put( "__dir", __Dir),
 	put( "__file", filename:basename( ?FILE ) ),
 	put( "__base", filename:basename( ?FILE, ".escript" ) ),
+	{ OS1, OS2 } = os:type(),
+	{ OSV1, OSV2, OSV3 } = os:version(),
+	put( "OSTYPE", io_lib:format( "\"~s ~s ~b.~b.~b\"", [ OS1, OS2, OSV1, OSV2, OSV3 ] ) ),
 	case os:getenv( "LOG_LEVEL" ) of % 7 = debug -> 0 = emergency
 		false -> put( "LOG_LEVEL", "6" );
 		LEVEL -> put( "LOG_LEVEL", LEVEL )
@@ -115,29 +118,29 @@ setup_magic_and_environment() ->
 
 -spec ebp_log( Log_Level :: atom(), Log_Message :: string() ) -> ok.
 ebp_log( Log_Level, Log_Message ) ->
-	% TODO: if no color, make color_reset ""
-	Color =
+	{ Color, Color_Reset } =
 	case get( "NO_COLOR" ) of
-		true -> "";
+		true -> { "", "" };
 		false ->
 			case Log_Level of
-				output    -> ?COLOR_OUTPUT;
-				debug     -> ?COLOR_DEBUG;
-				info      -> ?COLOR_INFO;
-				notice    -> ?COLOR_NOTICE;
-				warning   -> ?COLOR_WARNING;
-				error     -> ?COLOR_ERROR;
-				critical  -> ?COLOR_CRITICAL;
-				alert     -> ?COLOR_ALERT;
-				emergency -> ?COLOR_EMERGENCY;
-				_         -> ?COLOR_INFO % output a warning?
+				output    -> { ?COLOR_OUTPUT, ?COLOR_RESET };
+				debug     -> { ?COLOR_DEBUG, ?COLOR_RESET };
+				info      -> { ?COLOR_INFO, ?COLOR_RESET };
+				notice    -> { ?COLOR_NOTICE, ?COLOR_RESET };
+				warning   -> { ?COLOR_WARNING, ?COLOR_RESET };
+				error     -> { ?COLOR_ERROR, ?COLOR_RESET };
+				critical  -> { ?COLOR_CRITICAL, ?COLOR_RESET };
+				alert     -> { ?COLOR_ALERT, ?COLOR_RESET };
+				emergency -> { ?COLOR_EMERGENCY, ?COLOR_RESET };
+				_         -> { ?COLOR_INFO, ?COLOR_RESET } % output a warning?
 			end
 	end,
 	% output all to stderr unless it's 'output'
-	% TODO: Add timestamp info line bash version
+	{ { Y, M, D }, { H, Mn, S } } = calendar:universal_time(),	
+	TimeStamp = io_lib:format( "~4..0b-~2..0b-~2..0b ~2..0b:~2..0b:~2..0b UTC", [ Y, M, D, H, Mn, S ] ),
 	case Log_Level of
-		output -> io:format( "~s~s~s~n", [ Color, Log_Message, ?COLOR_RESET ] );
-		_      -> io:format( standard_error, "~s~s~s~n", [ Color, Log_Message, ?COLOR_RESET ] )
+		output -> io:format( "~s ~s[~9.. s]~s ~s~n", [ TimeStamp, Color, Log_Level, Color_Reset, Log_Message ] );
+		_      -> io:format( standard_error, "~s ~s[~9.. s]~s ~s~n", [ TimeStamp, Color, Log_Level, Color_Reset, Log_Message ] )
 	end.	  
 
 -spec call_log( Log_Level :: atom(), Log_Message :: string(), In_Level :: string() ) -> ok.
@@ -361,31 +364,25 @@ validate_required_args( [ { Short, Long, _, _, true, _ } | T ] ) ->
 validate_required_args( [ _ | T ] ) ->
 	validate_required_args( T ).
 
-info() -> 
-	% TODO: make this look like bash one
-	P = erlang:open_port({spawn, "bash -c test -t 1"}, [ exit_status ] ),
-	receive 
-		{ P, { exit_status, Data } } -> io:format("Data ~p~n", [ Data ] )
-	end,
-	setup_magic_and_environment(),
-	parse_usage(),
-	io:format( "dir: ~p~n", [ get("__dir") ] ),
-	io:format( "file: ~p~n", [ get("__file") ] ),
-	io:format( "base: ~p~n", [ get("__base") ] ),
-	io:format( "log level: ~p~n", [ get("LOG_LEVEL") ] ),
-	io:format( "color?: ~p~n", [ get("NO_COLOR") ] ),
-	io:format( "term: ~p~n", [ os:getenv("TERM") ] ),
-	ebp_alert( "alert" ),
-	ebp_critical( "critical" ),
-	ebp_error( "error" ),
-	ebp_warning( "warning" ),
-	ebp_notice( "notice" ),
-	ebp_info( "info" ),
-	ebp_debug( "debug" ),
-	ebp_output( "output" ),
-	help( "help test" ),
-	ebp_emergency( "emergency" ),
-	ok.
+demo() -> 
+	put( "LOG_LEVEL", "7" ),
+	ebp_info( io_lib:format( "__file: ~s", [ get( "__file" ) ] ) ),
+	ebp_info( io_lib:format( "__dir: ~s", [ get( "__dir" ) ] ) ),
+	ebp_info( io_lib:format( "__base: ~s", [ get( "__base" ) ] ) ),
+	ebp_info( io_lib:format( "__OSTYPE: ~s", [ get( "OSTYPE" ) ] ) ),
+	ebp_info( io_lib:format( "arg_f: ~s", [ get( "-f" ) ] ) ),
+	ebp_info( io_lib:format( "arg_d: ~s", [ get( "-d" ) ] ) ),
+	ebp_info( io_lib:format( "arg_v: ~s", [ get( "-v" ) ] ) ),
+	ebp_info( io_lib:format( "arg_h: ~s", [ get( "-h" ) ] ) ),
+	ebp_output( "General output that goes to stdout regardless of log level" ),
+	ebp_info( "Normal operational messages - may be harvested for reporting, measuring throughput, etc. - no action required." ),
+	ebp_notice( "Events that are unusual but not error conditions - might be summarized in an email to developers or admins to spot potential problems - no immediate action required." ),
+	ebp_warning( "Warning messages, not an error, but indication that an error will occur if action is not taken, e.g. file system 85% full - each item must be resolved within a given time. This is a debug message" ),
+	ebp_error( "Non-urgent failures, these should be relayed to developers or admins; each item must be resolved within a given time." ),
+	ebp_critical( "Should be corrected immediately, but indicates failure in a primary system, an example is a loss of a backup ISP connection." ),
+	ebp_alert( "Should be corrected immediately, therefore notify staff who can fix the problem.An example would be the loss of a primary ISP connection." ),
+	ebp_debug( "Debug messages. Will print when -d flag is set or LOG_LEVEL=7." ),
+	ebp_emergency( "A \"panic\" condition usually affecting multiple apps/servers/sites. At this levelit would usually notify all tech staff on call." ).
 
 main( Args ) ->
 	setup_magic_and_environment(),
@@ -441,17 +438,7 @@ main( Args ) ->
 	%%% Runtime
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	
-	info().
+	demo().
 	
 	
-%	io:format("~p~n", [ init:get_arguments() ] ),
-%	io:format("~p~n", [ init:get_plain_arguments() ] ),
-%	io:format("~p~n", [ ?__BOILERPLATE_VERSION__ ] ),
-%	io:format("~p~n", [ ?LINE ] ),
-%	io:format("~p~n", [ ?MACHINE ] ), 
-%	io:format("~p~n", [ ?FUNCTION_NAME ] ),
-%	io:format("~p~n", [ ?FUNCTION_ARITY ] ),
-%	io:format("~p~n", [ string:tokens( ?USAGE_STR, "\n" ) ] ),
-
-
 
