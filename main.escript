@@ -25,6 +25,51 @@
 -author( "A. G. Madi").
 -vsn( ?__BOILERPLATE_VERSION__ ).
 
+%%%  Define this list in order to provide available command line arguments
+%%%  The list will also be used to create the usage/help output.
+%%%  Another option is to create a usage string like the one defined below.
+%%%  Only define one or the other. If this one is defined, USAGE_STR will be ignored.
+%%%  Undefine by setting to 'undefined' as follows:
+%%%      -define( USAGE_LIST, undefined ).
+-define( USAGE_LIST,
+	 [
+%	  { short, long,         arg,   description,                                           required, default }
+	  { "-f",  "--file",     true,  "Filename to process",                                 true,     undefined },
+	  { "-t",  "--temp",     true,  "Location of tempfile",                                false,    "/tmp/bar" },
+	  { "-v",  undefined,    false, "Enable verbose mode, print script as it is executed", false,    undefined },
+	  { "-d",  "--debug",    false, "Enables debug mode",                                  false,    undefined },
+	  { "-h",  "--help",     false, "This page",                                           false,    undefined },
+	  { "-n",  "--no-color", false, "Disable color output",                                false,    undefined },
+	  { "-1",  "--one",      false, "Do just one thing",                                   false,    undefined },
+	  { "-V",  "--version",  false, "Show version and exit",                               false,    undefined }
+	 ] ).
+
+%%%  Define this usage string in order to provide available command line arguments.
+%%%  The string will be parsed into a list like the one defined above.  The parsing
+%%%  is not bulletproof so be precise in your syntax.
+%%%  It is generally better in every case to define a usage list instead of a string, as shown
+%%%  above.  Parsing of this string is provided here since it is available in the original
+%%%  Bash boilerplate script on which this escript is based. 
+%%%  Only define one or the other. If USAGE_LIST is defined, this one will be ignored.
+%%%  Undefine by setting to 'undefined' as follows:
+%%%      -define( USAGE_STR, undefined ).
+-define( USAGE_STR, undefined ).
+%-define( USAGE_STR, "
+%  -f --file  [arg] Filename to process. Required.
+%  -t --temp  [arg] Location of tempfile. Default=/tmp/bar
+%  -v               Enable verbose mode, print script as it is executed
+%  -d --debug       Enables debug mode
+%  -h --help        This page
+%  -n --no-color    Disable color output
+%  -1 --one         Do just one thing
+%  -V --version     Show version and exit
+%" ).
+
+-define( __helptext, "
+ This is the escript boilerplate help text.  Feel free to add any description of your
+ program of elaborate more on command-line arguments. This section is not
+ parsed and will be added as-is to the help." ).
+
 % define log colors
 -define( COLOR_OUTPUT, "\x1b[36m" ).
 -define( COLOR_DEBUG, "\x1b[35m" ).
@@ -123,47 +168,6 @@ ebp_debug( Log_Message ) -> call_log( debug, Log_Message, "7" ).
 ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
 
 
-%%%  Define this list in order to provide available command line arguments.
-%%%  The list will also be used to create the usage/help output.
-%%%  Another option is to create a usage string like the one defined below.
-%%%  Only define one or the other. If this one is defined, USAGE_STR will be ignored.
-%%%  Undefine by setting to 'undefined' as follows:
-%%%      -define( USAGE_LIST, undefined ).
-%-define( USAGE_LIST, undefined ).
--define( USAGE_LIST,
-	 [
-%	  { short, long,         arg,   description,                                           required, default }
-	  { "-f",  "--file",     true,  "Filename to process",                                 true,     undefined },
-	  { "-t",  "--temp",     true,  "Location of tempfile",                                false,    "/tmp/bar" },
-	  { "-v",  undefined,    false, "Enable verbose mode, print script as it is executed", false,    undefined },
-	  { "-d",  "--debug",    false, "Enables debug mode",                                  false,    undefined },
-	  { "-h",  "--help",     false, "This page",                                           false,    undefined },
-	  { "-n",  "--no-color", false, "Disable color output",                                false,    undefined },
-	  { "-1",  "--one",      false, "Do just one thing",                                   false,    undefined },
-	  { "-V",  "--version",  false, "Show version and exit",                               false,    undefined }
-	 ] ).
-
-%%%  Define this usage string in order to provide available command line arguments.
-%%%  The string will be parsed into a list like the one defined above.  The parsing
-%%%  is not bulletproof so be precise in your syntax.
-%%%  It is generally better in every case to define a usage list instead of a string, as shown
-%%%  above.  Parsing of this string is provided here since it is available in the original
-%%%  Bash boilerplate script on which this escript is based. 
-%%%  Only define one or the other. If USAGE_LIST is defined, this one will be ignored.
-%%%  Undefine by setting to 'undefined' as follows:
-%%%      -define( USAGE_STR, undefined ).
--define( USAGE_STR, undefined ).
-%-define( USAGE_STR, "
-%  -f --file  [arg] Filename to process. Required.
-%  -t --temp  [arg] Location of tempfile. Default=/tmp/bar
-%  -v               Enable verbose mode, print script as it is executed
-%  -d --debug       Enables debug mode
-%  -h --help        This page
-%  -n --no-color    Disable color output
-%  -1 --one         Do just one thing
-%  -V --version     Show version and exit
-%" ).
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Usage string parsing functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -235,18 +239,49 @@ parse_usage( ) ->
 help( Help_Message ) ->
 	io:format( standard_error, "~n  ~s~n~n", [ Help_Message ] ),
 	usage(),
-	case get( "__helptext" ) of
-		undefined -> ok;
-		HelpText -> io:format( standard_error, "~s~n~n", [ HelpText ] )
-	end,
+	io:format( standard_error, "~s~n~n", [ ?__helptext ] ),
 	erlang:halt(1).
 
 -spec usage( ) -> ok.
 usage() ->
-	case get( "__usage" ) of
-		undefined -> io:format( standard_error, "No usage available~n~n", [ ] );
-		Usage -> io:format( standard_error, "~p~n~n", [ Usage ] )
-			 % TODO: format Usage correctly 
+	% if USAGE_STR is defined, use it as is, else use USAGE_LIST
+	case ?USAGE_STR of
+		undefined ->
+			case get( "__usage" ) of
+				undefined ->
+					io:format( standard_error, "No usage available~n~n", [ ] );
+				Usage ->
+					LongestLong = length( lists:foldr( fun( { _, undefined, _, _, _, _ }, Acc ) -> 
+									Acc;
+								      ( { _, L, _, _, _, _ }, Acc ) ->
+									case length( L ) > length( Acc ) of
+										true -> L;
+										false -> Acc
+									end
+							       end, "", Usage ) ),
+					lists:foreach( fun( { Short, Long, Arg, Description, Required, Default } ) ->
+							LongOpt = case Long of
+									  undefined -> string:chars( 32, LongestLong );
+									  _ -> Long ++ string:chars( 32, LongestLong - length( Long ) )
+								  end,
+							ArgRequired = case Arg of
+									  false -> "     ";
+									  true  -> "[arg]"
+								      end,
+							OptRequired = case Required of
+									  false -> "";
+									  true  -> "Required."
+								      end,
+							DefaultStr = case Default of
+									  undefined -> "";
+									  _ -> Default
+								     end,
+							io:format( standard_error, "  ~s ~s ~s ~s ~s ~s~n", 
+								   [ Short, LongOpt, ArgRequired, Description, OptRequired, DefaultStr ] ) 
+						       end, Usage )
+			end;
+		Usage ->
+			io:format( standard_error, "~s~n", [ Usage ] )
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
