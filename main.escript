@@ -384,7 +384,7 @@ demo() ->
 	ebp_debug( "Debug messages. Will print when -d flag is set or LOG_LEVEL=7." ),
 	ebp_emergency( "A \"panic\" condition usually affecting multiple apps/servers/sites. At this levelit would usually notify all tech staff on call." ).
 
-% TODO: trap exit for cleanup function.
+% TODO: trap exit for cleanup function
 main( Args ) ->
 	setup_magic_and_environment(),
 	parse_usage(),
