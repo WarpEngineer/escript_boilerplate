@@ -369,7 +369,7 @@ demo() ->
 	ebp_info( io_lib:format( "__file: ~s", [ get( "__file" ) ] ) ),
 	ebp_info( io_lib:format( "__dir: ~s", [ get( "__dir" ) ] ) ),
 	ebp_info( io_lib:format( "__base: ~s", [ get( "__base" ) ] ) ),
-	ebp_info( io_lib:format( "__OSTYPE: ~s", [ get( "OSTYPE" ) ] ) ),
+	ebp_info( io_lib:format( "OSTYPE: ~s", [ get( "OSTYPE" ) ] ) ),
 	ebp_info( io_lib:format( "arg_f: ~s", [ get( "-f" ) ] ) ),
 	ebp_info( io_lib:format( "arg_d: ~s", [ get( "-d" ) ] ) ),
 	ebp_info( io_lib:format( "arg_v: ~s", [ get( "-v" ) ] ) ),
@@ -384,6 +384,7 @@ demo() ->
 	ebp_debug( "Debug messages. Will print when -d flag is set or LOG_LEVEL=7." ),
 	ebp_emergency( "A \"panic\" condition usually affecting multiple apps/servers/sites. At this levelit would usually notify all tech staff on call." ).
 
+% TODO: trap exit for cleanup function.
 main( Args ) ->
 	setup_magic_and_environment(),
 	parse_usage(),
