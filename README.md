@@ -13,11 +13,11 @@
 
 <!--more-->
 
-This script is a good template to write Erlang (escript) scripts.  It's based on the original Bash3
-Boilerplate ( kvz/bash3boilerplate ). The most common things needed in a command-line script are
+This script is a good template to write Erlang (escript) scripts.  It's based on the original [Bash3
+Boilerplate](https://github.com/kvz/bash3boilerplate). The most common things needed in a command-line script are
 handled and all that's needed is to fill in the actual runtime code.
 
-Just as with Bash3 Boilerplate, the script is Delete-Key-**Friendly**. The one and only script, `main.escript`](https://github.com/WarpEngineer/escript_boilerplate/blob/master/main.escript), can be used by removing the parts you don't need. To maintain **Portability**, the script does not use anything fancy so it should work with any recent version of Erlang.
+Just as with Bash3 Boilerplate, the script is Delete-Key-**Friendly**. The one and only script, `main.escript`(https://github.com/WarpEngineer/escript_boilerplate/blob/master/main.escript), can be used by removing the parts you don't need. To maintain **Portability**, the script does not use anything fancy so it should work with any recent version of Erlang.
 
 ## Features
 
