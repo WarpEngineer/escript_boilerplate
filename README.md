@@ -41,6 +41,6 @@ vim main.escript
 
 ## License
 
-Copyright (c) 2016 A. G. Madi.
-Licensed under [GPL](https://github.com/WarpEngineer/escript_boilerplate/blob/master/LICENSE).
+Copyright (c) 2016-2018 A. G. Madi.
+Licensed under [APLv2](https://github.com/WarpEngineer/escript_boilerplate/blob/master/LICENSE).
 
