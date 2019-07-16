@@ -15,6 +15,8 @@
 %%% Copyright (c) 2016 A. G. Madi 
 %%% https://github.com/WarpEngineer/escript_boilerplate
 
+-define( __MODULE_NAME__, escript_boilerplate ).
+
 % Boilerplate version
 -define( __BOILERPLATE_VERSION__, "2016.12.17" ).
 
@@ -22,6 +24,8 @@
 -define( __version, "2016.12" ).
 
 % The following can be used if the script is turned into a module.
+-module( ?__MODULE_NAME__ ).
+-mode( compile ).
 -author( "A. G. Madi").
 -vsn( ?__BOILERPLATE_VERSION__ ).
 
