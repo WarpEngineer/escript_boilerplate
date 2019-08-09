@@ -12,16 +12,16 @@
 %%% Inspired by, and based on, BASH3 Boilerplate template by Kevin van Zonneveld
 %%%    ( http://bash3boilerplate.sh )
 %%%
-%%% Copyright (c) 2016 A. G. Madi 
+%%% Copyright (c) 2016,2019 A. G. Madi 
 %%% https://github.com/WarpEngineer/escript_boilerplate
 
 -define( __MODULE_NAME__, escript_boilerplate ).
 
 % Boilerplate version
--define( __BOILERPLATE_VERSION__, "2016.12.17" ).
+-define( __BOILERPLATE_VERSION__, "2019.07.16" ).
 
 % Set script version
--define( __version, "2016.12" ).
+-define( __version, "2019.07" ).
 
 % The following can be used if the script is turned into a module.
 -module( ?__MODULE_NAME__ ).
@@ -71,7 +71,7 @@
 
 -define( __helptext, "
  This is the escript boilerplate help text.  Feel free to add any description of your
- program of elaborate more on command-line arguments. This section is not
+ program or elaborate more on command-line arguments. This section is not
  parsed and will be added as-is to the help." ).
 
 % define log colors
