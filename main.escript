@@ -18,10 +18,10 @@
 -define( __MODULE_NAME__, escript_boilerplate ).
 
 % Boilerplate version
--define( __BOILERPLATE_VERSION__, "2019.07.16" ).
+-define( __BOILERPLATE_VERSION__, "2019.08.08" ).
 
 % Set script version
--define( __version, "2019.07" ).
+-define( __version, "2019.08" ).
 
 % The following can be used if the script is turned into a module.
 -module( ?__MODULE_NAME__ ).
@@ -242,53 +242,62 @@ parse_usage( ) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+-spec pager( [ string() ] ) -> ok.
+pager( Document ) ->
+	%{ok,Rows} = io:rows(), % fails in recent versions of Erlang
+	Rows = list_to_integer(string:trim(os:cmd("tput lines"))),
+	case length(Document) of
+		N when N > Rows - 1 ->
+			{ Page, Rest } = lists:split( Rows - 1, Document ),
+			lists:foreach(fun(X) -> io:format(standard_error, "~s~n", [ X  ] ) end, Page ),
+			io:format(standard_error, "PRESS ENTER TO CONTINUE.....", []),
+			%io:get_password(), % stopped working
+			io:get_line(""),
+			pager( Rest );
+		_ ->
+			lists:foreach(fun(X) -> io:format(standard_error, "~s~n", [ X ] ) end, Document)
+	end.
+
 -spec help( Help_Message :: string() ) -> ok.
 help( Help_Message ) ->
-	io:format( standard_error, "~n  ~s~n~n", [ Help_Message ] ),
-	usage(),
-	io:format( standard_error, "~s~n~n", [ ?__helptext ] ),
+	Out = [lists:flatten(io_lib:format("~n  ~s~n~n", [ Help_Message ]))] ++ usage() ++ string:tokens( ?__helptext, "\n" ),
+	pager(Out),
 	erlang:halt(1).
 
--spec usage( ) -> ok.
+-spec usage( ) -> [ string() ].
 usage() ->
-	% if USAGE_STR is defined, use it as is, else use USAGE_LIST
-	case ?USAGE_STR of
+	case get( "__usage" ) of
 		undefined ->
-			case get( "__usage" ) of
-				undefined ->
-					io:format( standard_error, "No usage available~n~n", [ ] );
-				Usage ->
-					LongestLong = length( lists:foldr( fun( { _, undefined, _, _, _, _ }, Acc ) -> 
-									Acc;
-								      ( { _, L, _, _, _, _ }, Acc ) ->
-									case length( L ) > length( Acc ) of
-										true -> L;
-										false -> Acc
-									end
-							       end, "", Usage ) ),
-					lists:foreach( fun( { Short, Long, Arg, Description, Required, Default } ) ->
-							LongOpt = case Long of
-									  undefined -> string:chars( 32, LongestLong );
-									  _ -> Long ++ string:chars( 32, LongestLong - length( Long ) )
-								  end,
-							ArgRequired = case Arg of
-									  false -> "     ";
-									  true  -> "[arg]"
-								      end,
-							OptRequired = case Required of
-									  false -> "";
-									  true  -> "Required."
-								      end,
-							DefaultStr = case Default of
-									  undefined -> "";
-									  _ -> Default
-								     end,
-							io:format( standard_error, "  ~s ~s ~s ~s ~s ~s~n", 
-								   [ Short, LongOpt, ArgRequired, Description, OptRequired, DefaultStr ] ) 
-						       end, Usage )
-			end;
+			["No usage available"];
 		Usage ->
-			io:format( standard_error, "~s~n", [ Usage ] )
+			LongestLong = length( lists:foldr( fun( { _, undefined, _, _, _, _ }, Acc ) -> 
+									   Acc;
+							      ( { _, L, _, _, _, _ }, Acc ) ->
+									   case length( L ) > length( Acc ) of
+										   true -> L;
+										   false -> Acc
+									   end
+							   end, "", Usage ) ),
+			lists:reverse(lists:foldl( fun( { Short, Long, Arg, Description, Required, Default }, Acc ) ->
+						       LongOpt = case Long of
+									 undefined -> string:chars( 32, LongestLong );
+									 _ -> Long ++ string:chars( 32, LongestLong - length( Long ) )
+								 end,
+						       ArgRequired = case Arg of
+									     false -> "     ";
+									     true  -> "[arg]"
+								     end,
+						       OptRequired = case Required of
+									     false -> "";
+									     true  -> "Required."
+								     end,
+						       DefaultStr = case Default of
+									    undefined -> "";
+									    _ -> Default
+								    end,
+						       [ lists:flatten(io_lib:format( "  ~s ~s ~s ~s ~s ~s", 
+								  [ Short, LongOpt, ArgRequired, Description, OptRequired, DefaultStr ] )) | Acc ]
+				       end, [], Usage )) ++ [""]
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
