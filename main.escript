@@ -18,7 +18,7 @@
 -define( __MODULE_NAME__, escript_boilerplate ).
 
 % Boilerplate version
--define( __BOILERPLATE_VERSION__, "2019.08.08" ).
+-define( __BOILERPLATE_VERSION__, "2019.08.11" ).
 
 % Set script version
 -define( __version, "2019.08" ).
@@ -31,10 +31,6 @@
 
 %%%  Define this list in order to provide available command line arguments
 %%%  The list will also be used to create the usage/help output.
-%%%  Another option is to create a usage string like the one defined below.
-%%%  Only define one or the other. If this one is defined, USAGE_STR will be ignored.
-%%%  Undefine by setting to 'undefined' as follows:
-%%%      -define( USAGE_LIST, undefined ).
 -define( USAGE_LIST,
 	 [
 %	  { short, long,         arg,   description,                                           required, default }
@@ -47,27 +43,6 @@
 	  { "-1",  "--one",      false, "Do just one thing",                                   false,    undefined },
 	  { "-V",  "--version",  false, "Show version and exit",                               false,    undefined }
 	 ] ).
-
-%%%  Define this usage string in order to provide available command line arguments.
-%%%  The string will be parsed into a list like the one defined above.  The parsing
-%%%  is not bulletproof so be precise in your syntax.
-%%%  It is generally better in every case to define a usage list instead of a string, as shown
-%%%  above.  Parsing of this string is provided here since it is available in the original
-%%%  Bash boilerplate script on which this escript is based. 
-%%%  Only define one or the other. If USAGE_LIST is defined, this one will be ignored.
-%%%  Undefine by setting to 'undefined' as follows:
-%%%      -define( USAGE_STR, undefined ).
--define( USAGE_STR, undefined ).
-%-define( USAGE_STR, "
-%  -f --file  [arg] Filename to process. Required.
-%  -t --temp  [arg] Location of tempfile. Default=/tmp/bar
-%  -v               Enable verbose mode, print script as it is executed
-%  -d --debug       Enables debug mode
-%  -h --help        This page
-%  -n --no-color    Disable color output
-%  -1 --one         Do just one thing
-%  -V --version     Show version and exit
-%" ).
 
 -define( __helptext, "
  This is the escript boilerplate help text.  Feel free to add any description of your
@@ -174,78 +149,23 @@ ebp_debug( Log_Message ) -> call_log( debug, Log_Message, "7" ).
 -spec ebp_output( Log_Message :: string() ) -> ok.
 ebp_output( Log_Message ) -> ebp_log( output, Log_Message ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Usage string parsing functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
--spec get_arg_description( list() ) -> string().
-get_arg_description( L ) ->
-	string:join(
-	  lists:takewhile( fun("Required" ++ _) -> false;
-			      ("Default" ++ _) -> false;
-			      (_) -> true end, L ), " "
-	 ).	  
-
--spec get_arg_default( list() ) -> string().
-get_arg_default( L ) ->
-	case lists:filter( fun("Default=" ++ _) -> true;
-			      ("default=" ++ _) -> true;
-			      ( _ ) -> false end, L
-			 ) of
-		[] -> 
-			undefined;
-		[ Default ] -> 
-			string:sub_word( Default, 2, $= )
+% This shouldn't be necessary but os:rows() no longer works in newer version of Erlang, so we call the shell directly
+-spec get_terminal_lines() -> integer().
+get_terminal_lines() ->
+	P = erlang:open_port({spawn, "tput lines"}, [use_stdio, in, stream,{line, 10000}]),
+	receive
+		{P, {data, {_,Line}}} ->
+			erlang:port_close(P),
+			erlang:list_to_integer(Line)
 	end.
 
--spec is_arg_required( list() ) -> true | false.
-is_arg_required( L ) ->
-	lists:member("required", lists:map(fun(X) -> string:strip(string:to_lower(X), right, $.) end, L)).
-
-%%	  { short, long,         arg,   description,                                           required, default }
--spec parse_usage_string( list() ) -> list( tuple() ).
-parse_usage_string( [ ] ) ->
-	{};
-parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L, "[arg]"  | T ] ) ->
-	{ Short, Long, true, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
-parse_usage_string( [ Short = "-" ++ _S, Long = "--" ++ _L | T ] ) ->
-	{ Short, Long, false, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
-parse_usage_string( [ Short = "-" ++ _S | T ] ) ->
-	{ Short, undefined, false, get_arg_description( T ), is_arg_required( T ), get_arg_default( T ) };
-parse_usage_string( _T ) ->
-	{}.
-
--spec parse_usage_strings( list(), list( tuple() ) ) -> list( tuple() ).
-parse_usage_strings( [  ], Acc ) ->
-	Acc;
-parse_usage_strings( [ H | T ], Acc ) ->
-	case parse_usage_string( string:tokens( H, " ") ) of
-		{} -> parse_usage_strings( T, Acc );
-		Parsed -> parse_usage_strings( T, [ Parsed | Acc ] )
-	end.
-
--spec parse_usage( ) -> ok.
-parse_usage( ) ->
-	% if USAGE_LIST is defined, ignore USAGE_STR.
-	case ?USAGE_LIST of
-		undefined ->
-			case ?USAGE_STR of
-				undefined ->
-					ebp_emergency( "One of USAGE_STR or USAGE_LIST is required to proceed" );
-				_Usage_str ->
-					put( "__usage", parse_usage_strings( string:tokens( ?USAGE_STR, "\n" ), [ ] ) )
-			end;
-		_Usage ->
-			put( "__usage", ?USAGE_LIST )
-	end.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% Page the help output so it doesn't scroll off the screen
 -spec pager( [ string() ] ) -> ok.
 pager( Document ) ->
-	%{ok,Rows} = io:rows(), % fails in recent versions of Erlang
-	Rows = list_to_integer(string:trim(os:cmd("tput lines"))),
+	%{ok,Rows} = io:rows(), % fails in recent versions of Erlang so we have to call the shell directly
+	Rows = get_terminal_lines(),
 	case length(Document) of
 		N when N > Rows - 1 ->
 			{ Page, Rest } = lists:split( Rows - 1, Document ),
@@ -258,12 +178,14 @@ pager( Document ) ->
 			lists:foreach(fun(X) -> io:format(standard_error, "~s~n", [ X ] ) end, Document)
 	end.
 
+% Call the help function with a user-supplied message
 -spec help( Help_Message :: string() ) -> ok.
 help( Help_Message ) ->
-	Out = [lists:flatten(io_lib:format("~n  ~s~n~n", [ Help_Message ]))] ++ usage() ++ string:tokens( ?__helptext, "\n" ),
+	Out = ["", lists:flatten(io_lib:format("  ~s", [ Help_Message ])), "", ""] ++ usage() ++ string:tokens( ?__helptext, "\n" ),
 	pager(Out),
 	erlang:halt(1).
 
+% Generate a list of lines containg the usage information. It's a list because it's sent to the paging function
 -spec usage( ) -> [ string() ].
 usage() ->
 	case get( "__usage" ) of
@@ -377,6 +299,7 @@ validate_required_args( [ { Short, Long, _, _, true, _ } | T ] ) ->
 validate_required_args( [ _ | T ] ) ->
 	validate_required_args( T ).
 
+% This is a demo funciton that can be replaced by the proper runtime function needed. It's called from main().
 demo() -> 
 	put( "LOG_LEVEL", "7" ),
 	ebp_info( io_lib:format( "__file: ~s", [ get( "__file" ) ] ) ),
@@ -400,8 +323,7 @@ demo() ->
 % TODO: trap exit for cleanup function
 main( Args ) ->
 	setup_magic_and_environment(),
-	parse_usage(),
-	
+	put( "__usage", ?USAGE_LIST ),
 	parse_args( Args ),
 
 	% process command line switches
