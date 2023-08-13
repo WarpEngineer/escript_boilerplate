@@ -1,4 +1,5 @@
 #!/bin/bash
+# start working on this project using tmux.
 tmux has-session -t escriptboilerplate
 if [ $? != 0 ]
 then
